@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component inheritJdk="true">
+	<exclude-output/>
+	<contentEntry url="file://$MODULE_DIR$"/>
+	<lib name="simpledb.jar" scope="COMPILE">
+		<relative-module-cls project-related="jar://$PROJECT_DIR$/dist/simpledb.jar!/"/>
+	</lib>
+	<lib name="ant-contrib-1.0b3.jar" scope="COMPILE">
+		<relative-module-cls project-related="jar://$PROJECT_DIR$/lib/ant-contrib-1.0b3.jar!/"/>
+	</lib>
+	<lib name="jline-0.9.94.jar" scope="COMPILE">
+		<relative-module-cls project-related="jar://$PROJECT_DIR$/lib/jline-0.9.94.jar!/"/>
+	</lib>
+	<lib name="junit-4.5.jar" scope="COMPILE">
+		<relative-module-cls project-related="jar://$PROJECT_DIR$/lib/junit-4.5.jar!/"/>
+	</lib>
+	<lib name="zql.jar" scope="COMPILE">
+		<relative-module-cls project-related="jar://$PROJECT_DIR$/lib/zql.jar!/"/>
+	</lib>
+</component>

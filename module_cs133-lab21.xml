@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="module_cs133-lab21" default="compile.module.cs133-lab21">
+  <dirname property="module.cs133-lab21.basedir" file="${ant.file.module_cs133-lab21}"/>
+  
+  <property name="module.jdk.home.cs133-lab21" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.cs133-lab21" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.cs133-lab21" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.cs133-lab21" value="-encoding windows-1252 -source 1.6 ${compiler.args}"/>
+  
+  <property name="cs133-lab21.output.dir" value="${module.cs133-lab21.basedir}/out/production/cs133-lab21"/>
+  <property name="cs133-lab21.testoutput.dir" value="${module.cs133-lab21.basedir}/out/test/cs133-lab21"/>
+  
+  <path id="cs133-lab21.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="cs133-lab21.module.production.classpath">
+    <path refid="${module.jdk.classpath.cs133-lab21}"/>
+    <path refid="library.lib.classpath"/>
+  </path>
+  
+  <path id="cs133-lab21.runtime.production.module.classpath">
+    <pathelement location="${cs133-lab21.output.dir}"/>
+    <path refid="library.lib.classpath"/>
+  </path>
+  
+  <path id="cs133-lab21.module.classpath">
+    <path refid="${module.jdk.classpath.cs133-lab21}"/>
+    <pathelement location="${cs133-lab21.output.dir}"/>
+    <path refid="library.lib.classpath"/>
+  </path>
+  
+  <path id="cs133-lab21.runtime.module.classpath">
+    <pathelement location="${cs133-lab21.testoutput.dir}"/>
+    <pathelement location="${cs133-lab21.output.dir}"/>
+    <path refid="library.lib.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.cs133-lab21">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.cs133-lab21">
+    <patternset refid="excluded.from.module.cs133-lab21"/>
+  </patternset>
+  
+  <path id="cs133-lab21.module.test.sourcepath">
+    <dirset dir="${module.cs133-lab21.basedir}">
+      <include name="test"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.cs133-lab21" depends="compile.module.cs133-lab21.production,compile.module.cs133-lab21.tests" description="Compile module cs133-lab21"/>
+  
+  <target name="compile.module.cs133-lab21.production" depends="register.custom.compilers" description="Compile module cs133-lab21; production classes"/>
+  
+  <target name="compile.module.cs133-lab21.tests" depends="register.custom.compilers,compile.module.cs133-lab21.production" description="compile module cs133-lab21; test classes" unless="skip.tests">
+    <mkdir dir="${cs133-lab21.testoutput.dir}"/>
+    <javac2 destdir="${cs133-lab21.testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.cs133-lab21}/javac">
+      <compilerarg line="${compiler.args.cs133-lab21}"/>
+      <bootclasspath refid="cs133-lab21.module.bootclasspath"/>
+      <classpath refid="cs133-lab21.module.classpath"/>
+      <src refid="cs133-lab21.module.test.sourcepath"/>
+      <patternset refid="excluded.from.compilation.cs133-lab21"/>
+    </javac2>
+    
+    <copy todir="${cs133-lab21.testoutput.dir}">
+      <fileset dir="${module.cs133-lab21.basedir}/test">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="clean.module.cs133-lab21" description="cleanup module">
+    <delete dir="${cs133-lab21.output.dir}"/>
+    <delete dir="${cs133-lab21.testoutput.dir}"/>
+  </target>
+</project>

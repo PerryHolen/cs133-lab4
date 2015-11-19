@@ -1,0 +1,63 @@
+Writeup
+
+
+I used one slip day!
+
+-Excercise 1
+--Predicate.java
+In Predicate, I keep track of 3 member variables, the field number, fieldNo, 
+operator, and operand. The constructor, and getters are relatively
+straightforward. To filter I use the operand's compare method in combination 
+with the operator, and the tuple's tupleNo'th field. 
+
+--JoinPredicate.java
+Here my member variables are the two field numbers and an operator.
+I then filter by comparing the two corresponding fields aquired 
+by the fieldNo  members.
+
+---Filter.java
+HEre I keep store a predicate, a child, and an array of children. 
+To fetchNext, I continue along the iterator using next, and if 
+one of the tuples passes the filter, I return it.
+
+---Join.java
+    private JoinPredicate pred;
+    private DbIterator child1;
+    private DbIterator child2;
+    private DbIterator[] children;
+    private Tuple currLeft;
+I tracked the above members. Iterator control simply used super, and called the methods
+of the iterator members. FetchNext then iterated through the right iterator for each
+step along the left iterator, setting the fields in the output appropriately
+
+---Aggregate.java
+This was somewhat of a wrapper for the two other aggregation types. I kept
+track of the various indexes and the operation, and then called methods from
+the appropriate subclass.
+
+---Integer Aggregator
+Here I used two hashtables to track each groups aggregated value and a count of elements in that
+group. The type of operator decided how I changed this aggregated value.
+
+---StringAggregator.java
+Used a similar process here, but with less logic because there was only one valid operator
+
+---HeapPage.java
+Here I added funtionality to allow insertion and deletion. I would find the first empty slot and
+insert at it, making sure to update the header
+
+---HeapFile.java
+Again I implemented inserting and deleting. I would search for a page with empty space, and
+then insert. If there wasnt one, I would create a new page and write it to disk. I also
+implemented write, which just writes the file to disk at the proper offset.
+
+---BufferPool.java
+I added insert and delete which call the methods to insert and delete from the
+heap file. I then update the pool, and mark pages as dirty. I then implemented
+a buffer eviction policy. If the pool is too full, I simply evict a random page
+by writing it to disk, and removing it from the pool.
+
+---Insert/Delete
+Here we use an iterator that can then call the correct bufferpool insert and delete methods.
+
+
