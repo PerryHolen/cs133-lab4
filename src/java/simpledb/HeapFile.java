@@ -163,7 +163,7 @@ public class HeapFile implements DbFile {
                 // Initialize the state.
                 int tableId = HeapFile.this.getId();
                 pID = new HeapPageId(tableId, curPage);
-                page = Database.getBufferPool().getPage(tID, pID, null);
+                page = Database.getBufferPool().getPage(tID, pID, Permissions.READ_ONLY);
                 tupleIt = ((HeapPage) page).iterator();
             }
 
@@ -178,7 +178,7 @@ public class HeapFile implements DbFile {
                             int tableId = HeapFile.this.getId();
                             curPage++;
                             pID = new HeapPageId(tableId, curPage);
-                            page = Database.getBufferPool().getPage(tID, pID, null);
+                            page = Database.getBufferPool().getPage(tID, pID, Permissions.READ_ONLY);
                             tupleIt = ((HeapPage) page).iterator();
                             return hasNext();
                         }

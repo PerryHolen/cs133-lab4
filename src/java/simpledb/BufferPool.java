@@ -1,5 +1,8 @@
 package simpledb;
 
+
+import org.jgrapht.DirectedGraph;
+
 import java.io.*;
 
 import java.util.*;
@@ -128,6 +131,25 @@ public class BufferPool {
      */
     public void transactionComplete(TransactionId tid, boolean commit)
             throws IOException {
+        Page p;
+        if (commit){
+            for (PageId pid: pages.keySet()){
+                p = pages.get(pid);
+                if (p.isDirty()!=null && p.isDirty() ==tid){
+                    p.setBeforeImage();
+                    flushPage(pid);
+                }
+            }
+        }
+        else{
+            for (PageId pid: pages.keySet()){
+                p = pages.get(pid);
+                if (p.isDirty()!=null && p.isDirty() ==tid){
+                    pages.put(pid,p.getBeforeImage());
+                }
+            }
+        }
+
         lockmgr.releaseAllLocks(tid, commit); // Added for Lab 4
     }
 
@@ -252,19 +274,20 @@ public class BufferPool {
 
         // try to evict a random page, focusing first on finding one that is not dirty
         Object pids[] = pages.keySet().toArray();
-        PageId pid = (PageId) pids[random.nextInt(pids.length)];
+
+
+        ArrayList<PageId> cleanPages = new ArrayList<PageId>();
+        for(PageId p : pages.keySet()){
+            if (pages.get(p).isDirty() == null){
+                cleanPages.add(p);
+            }
+        }
+        if (cleanPages.isEmpty()){
+            throw new DbException("No clean pages to evict");
+        }
+        PageId pid = (PageId) cleanPages.get(random.nextInt(cleanPages.size()));
 
         try {
-            Page p = pages.get(pid);
-            if (p.isDirty() != null) { // this one is dirty, try to find first non-dirty
-                for (PageId pg : pages.keySet()) {
-                    if (pages.get(pg).isDirty() == null) {
-                        pid = pg;
-                        break;
-                    }
-                }
-
-            }
             flushPage(pid); // flush whichever one we ended up with, which may have been a dirty one
         } catch (IOException e) {
             throw new DbException("could not evict page");
@@ -282,10 +305,12 @@ public class BufferPool {
     private class LockManager {
 
         final int LOCK_WAIT = 10;       // ms
-
+        private static final int TIMEOUT = 500;
         private ConcurrentHashMap<TransactionId,HashSet<PageId>> trans2PageMap;
         private ConcurrentHashMap<PageId,Permissions> lockMap;
         private ConcurrentHashMap<PageId, HashSet<TransactionId>> page2TransMap;
+        private ConcurrentHashMap<TransactionId,Integer> waitMap;
+        private DirectedGraph waitGraph;
 
         /**
          * Sets up the lock manager to keep track of page-level locks for transactions
@@ -295,6 +320,7 @@ public class BufferPool {
             trans2PageMap = new ConcurrentHashMap<TransactionId, HashSet<PageId>>();
             lockMap = new ConcurrentHashMap<PageId, Permissions>();
             page2TransMap = new ConcurrentHashMap<PageId, HashSet<TransactionId>>();
+
         }
 
 
@@ -311,12 +337,15 @@ public class BufferPool {
         @SuppressWarnings("unchecked")
         public boolean acquireLock(TransactionId tid, PageId pid, Permissions perm)
                 throws DeadlockException {
-
+            int waitTime = 0;
             while(!lock(tid, pid, perm)) { // keep trying to get the lock
 
                 synchronized(this) {
-                    // some code here for Exercise 5, deadlock detection
-
+                    waitTime +=LOCK_WAIT;
+                    if (waitTime >= TIMEOUT){
+                        releaseAllLocks(tid,false);
+                        throw new DeadlockException();
+                    }
                 }
 
                 try {
@@ -325,7 +354,6 @@ public class BufferPool {
                 }
 
             }
-
 
             synchronized(this) {
                 // for Exercise 5, might need some cleanup on deadlock detection data structure
@@ -340,15 +368,29 @@ public class BufferPool {
          * Check lab description to make sure you clean up appropriately depending on whether transaction commits or aborts
          */
         public synchronized void releaseAllLocks(TransactionId tid, boolean commit) {
-            // some code here
 
+            if (trans2PageMap.get(tid)==null){
+                return;
+            }
+            for (PageId pid: trans2PageMap.get(tid)){
+                HashSet<TransactionId> ts = page2TransMap.get(pid);
+                if (ts.size()==1){
+                    page2TransMap.remove(pid);
+                    lockMap.remove(pid);
+                }
+                else{
+                    ts.remove(pid);
+                    page2TransMap.put(pid,ts);
+                }
+            }
+            trans2PageMap.remove(tid);
         }
 
 
 
         /** Return true if the specified transaction has a lock on the specified page */
         public synchronized boolean holdsLock(TransactionId tid, PageId p) {
-            if (lockMap.contains(p)){
+            if (lockMap.containsKey(p)){
                 return page2TransMap.get(p).contains(tid);
             }
             return false;
@@ -395,7 +437,8 @@ public class BufferPool {
                     return false;
                 }
                 //if the page is xlocked
-                else if (pagePerm == Permissions.READ_WRITE){
+                //HERE IS THE ISSUE
+                else if (!holdsLock(tid,pid) &&pagePerm == Permissions.READ_WRITE){
                     return true;
                 }
             }
@@ -409,15 +452,6 @@ public class BufferPool {
                     if (page2TransMap.get(pid).size()==1){
                         return false;
                     }
-                    //if tid is the only thing locking pid in read
-//                    if (lockMap.get(pid) == Permissions.READ_ONLY && page2TransMap.get(pid).size()==1){
-//                        return false;
-//                    }
-//                    else if (if (lockMap.get(pid) == Permissions.READ_WRITE && page2TransMap.get(pid).size()==1)){
-//                        return false;
-//                    }
-                    //if tid is not the only thing locking this page
-
                     else{
                         return true;
                     }
@@ -425,8 +459,10 @@ public class BufferPool {
 
 
             }
-            return false;
+            return true;
         }
+
+
 
         /*
          * Releases whatever lock this transaction has on this page
@@ -484,28 +520,29 @@ public class BufferPool {
                         return true;
                     }
                 }
+
                 return true;
             }
 
-            // some code here
-
+            // Add to the Lockmap if needed
             if (lockType == null){
                 lockMap.put(pid,perm);
-                HashSet<TransactionId> ts = new HashSet<TransactionId>();
-                ts.add(tid);
-                page2TransMap.put(pid, ts);
-                HashSet<PageId> ps = new HashSet<PageId>();
-                ps.add(pid);
-                trans2PageMap.put(tid, ps);
             }
-            else if (lockType == Permissions.READ_ONLY && perm ==Permissions.READ_ONLY){
-                HashSet<TransactionId> ts = page2TransMap.get(pid);
-                ts.add(tid);
-                page2TransMap.put(pid, ts);
-                HashSet<PageId> ps = trans2PageMap.get(tid);
-                ps.add(pid);
-                trans2PageMap.put(tid, ps);
+
+            //Add to the p2t map
+            HashSet<TransactionId> ts = page2TransMap.get(pid);
+            if (ts==null){
+                ts = new HashSet<TransactionId>();
             }
+            ts.add(tid);
+            page2TransMap.put(pid, ts);
+
+            HashSet<PageId> ps = trans2PageMap.get(tid);
+            if (ps == null){
+                ps = new HashSet<PageId>();
+            }
+            ps.add(pid);
+            trans2PageMap.put(tid, ps);
 
             return true;
         }
